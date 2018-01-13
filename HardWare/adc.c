@@ -42,9 +42,9 @@ void ADC_Config()
     ADC1->CR1 |= 0x01;
 }
 
-unsigned int Get_ADC_Average(unsigned char times)
+u16 Get_ADC_Average(u8 times)
 {
-    unsigned char i;
+    u8 i;
     unsigned long sum=0;
 
     for(i=0;i<times;i++)
@@ -54,7 +54,7 @@ unsigned int Get_ADC_Average(unsigned char times)
     return sum/times;
 }
 
-unsigned int Get_ADC_Data()
+u16 Get_ADC_Data()
 {
     unsigned int delay_times=2;
     unsigned int temp=0;

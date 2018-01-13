@@ -32,6 +32,8 @@
 #define MAXFREQUENCY                      200
 #define FREQUENCY_MAGNIFY                 1000
 
+//Voltage check
+#define LARGE_POWER                       0x30
 
 typedef enum
 {

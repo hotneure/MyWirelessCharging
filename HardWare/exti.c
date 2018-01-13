@@ -11,53 +11,12 @@ volatile u8 bitNum;
 volatile u8 Bytecheck;
 volatile u8 start_record;
 volatile u8 Byte_State;
-volatile u8 Message_Check;
 
 //解码使用的状态变量
 volatile u8 Times_State = INIT_STATE;
 volatile u8 pre_bit;
 volatile u8 first_start_bit;
 volatile u8 Level_State ;
-
-
-
-
-void GPIO_UART(u16 data)
-{
-    u8 bit=0;
-    long delay;
-    GPIOB->ODR &=~1<<5;
-    for(delay=20;delay>0;delay--){
-        
-    }
-    GPIOB->ODR |= 1<<5;
-    for(delay=5;delay>0;delay--){
-        
-    }
-    for(bit=0;bit<8;bit++){
-      if((data>>bit) & 0x01){
-         GPIOB->ODR &=~1<<5;
-         for(delay=3;delay>0;delay--){
-        
-         }
-         GPIOB->ODR |= 1<<5;
-         for(delay=5;delay>0;delay--){
-        
-         }      
-      }else{
-         GPIOB->ODR &=~1<<5;
-         for(delay=10;delay>0;delay--){
-        
-         }
-         GPIOB->ODR |= 1<<5;
-         for(delay=5;delay>0;delay--){
-        
-         }
-      }
-    }
-}
-
-
 
 void exti_init()
 {
@@ -97,9 +56,8 @@ void Stop_Rec()
     start_record=0;
     pre_bit =0;
     Bytecheck = 0;
-    Message_Check = 0;
     first_start_bit=0;
-    
+    Qi_Packet.CheckSum =0;
 }
 
 
@@ -115,10 +73,16 @@ u8 decode_header(u8 header)
     switch(header){        
         case STRENGTH_PACKET:
             Qi_Packet.Header =STRENGTH_PACKET;
+            return 3;
+            break;
         case END_POWER_PACKET:
             Qi_Packet.Header =END_POWER_PACKET;
+            return 3;
+            break;
         case CONTROL_ERROR_PACKET:
             Qi_Packet.Header =CONTROL_ERROR_PACKET;
+            return 3;
+            break;
         case RECEIVED_P0WER_PACKET:
             Qi_Packet.Header = RECEIVED_P0WER_PACKET;
             return 3;
@@ -139,8 +103,8 @@ u8 decode_header(u8 header)
 
 void Save_Bit(u8 bit)
 {
-  u8 a =80 ;
-  //zhang
+ u8 a =80 ;
+
   if(!start_record && (pre_bit>=10)&&(pre_bit<=25)&& first_start_bit==1){    //如果接收了11到25个1，且收到起始位0
     start_record =1;
   }
@@ -148,9 +112,9 @@ void Save_Bit(u8 bit)
   if(start_record){
       switch(Byte_State){
           case STARTCHECK:              //刚开始接收，校验起始位
-  //      GPIOB->ODR &= ~(1<<5);
-   //   while(a--);
-   //    GPIOB->ODR |= 1<<5;
+        GPIOB->ODR &= ~(1<<5);
+      while(a--);
+       GPIOB->ODR |= 1<<5;
               
               if(bit!=0){		//如果不是起始位，停止接收
                   Stop_Rec();
@@ -173,7 +137,6 @@ void Save_Bit(u8 bit)
 	      if(bitNum == 8){
 	          Byte_State=BYTECHECK;
                   bufferIndex++;
-                  // a =  Qi_Packet.Message[0];
 	      }
 	      break;
           case BYTECHECK:               //奇偶校验，奇偶位总校验
@@ -182,16 +145,7 @@ void Save_Bit(u8 bit)
                   Stop_Rec();
 	          break; 
 	      }
-              if(bufferIndex==1){
-                  Qi_Packet.CheckSum = bit;
-              }else{
-                 if(bufferIndex<bufferLength){
-                     Qi_Packet.CheckSum ^= bit;
-                             GPIOB->ODR &= ~(1<<5);
-      while(a--);
-       GPIOB->ODR |= 1<<5;
-                 } 
-              }    
+   
 	      Byte_State =STOPCHECK; 
               Bytecheck = 0;
 	      break;
@@ -199,14 +153,14 @@ void Save_Bit(u8 bit)
             
             	if(bit){
                     if(bufferIndex==1){
-                      //GPIO_UART(Qi_Packet.Message[0]);
                        if(decode_header(Qi_Packet.Message[0])){
                          
                             bufferLength = decode_header(Qi_Packet.Message[0]);
-                            Message_Check =Qi_Packet.Message[0];
+                            Qi_Packet.CheckSum =Qi_Packet.Message[0];
                             
                        }else{
                             Stop_Rec();                         //无效的数据包
+                            break;
                        }
                     }
                     
@@ -216,24 +170,18 @@ void Save_Bit(u8 bit)
                     if(bufferIndex==bufferLength && bufferLength){
                         bufferIndex -= 0x02;
                         for(bufferIndex;bufferIndex>0;bufferIndex--){
-                            Message_Check ^= Qi_Packet.Message[bufferIndex];     //数据包校验
-                        }
+                            Qi_Packet.CheckSum ^= Qi_Packet.Message[bufferIndex];     //数据包校验
+                        }  
                         
-                        if(Qi_Packet.CheckSum != bit){
-                            Stop_Rec();
-                        }         
-                        
-                       if(Message_Check== Qi_Packet.Message[bufferLength-1]){
+                       if(Qi_Packet.CheckSum== Qi_Packet.Message[bufferLength-1]){
                            Qi_Packet.Flag =1;
-                         //  GPIO_UART(Qi_Packet.Message[0]);
                        }
                        
                     }
-		    break;
 		}else{
                     Stop_Rec();
 		}
-		break; 
+		break;
     }
   }
 

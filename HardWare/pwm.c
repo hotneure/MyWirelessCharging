@@ -82,56 +82,15 @@ void pwm_init(void)
   //  TIM1->BKR  =  (uint8_t)(0x05);
     TIM1->CR1 |=0x01;
     TIM1->BKR |= 0x80;
-    PWM_Close();
-}
-
-//开TIM1更新事件中断
-void Set_PWM_Fre(u32 fre)
-{
-    frequency = fre;
-    PWM_State = SET_FREQUENCY;
-    TIM1->IER |= 0x01;   
-}
-    
-//单独关CH2
-void PWM_CH2_Close()
-{
-   PWM_State = CLOSE_TWO_PWM;
-   TIM1->IER |= 0x01;  
-}
-
-//单独开CH2
-void PWM_CH2_Return()
-{
-    PWM_State = OPEN_TWO_PWM;
-    TIM1->IER |= 0x01;  
-} 
-
-//四路PWM全部关闭
-void PWM_Close()
-{
-    PWM_State = CLOSE_FOUR_PWM;   
-    TIM1->IER |= 0x01;  
-}
-//四路PWM恢复
-void PWM_Return()
-{
-    PWM_State = OPEN_FOUR_PWM;   
-    TIM1->IER |= 0x01;  
-    while(TIM1->IER & 0x01);
-    if(Large_Power){
-        Set_PWM_Fre(HIGH_VOLTAGE_FRE);
-    }else{
-        Set_PWM_Fre(LOW_VOLTAGE_FRE);
-    }
-
+    PWM_Handler(CLOSE_FOUR_PWM);
 }
 
 
-//中断处理函数，重新设置PWM频率
-INTERRUPT_HANDLER(TIM1_UPD_OVF_TRG_BRK_IRQHandler, 11)
+void PWM_Handler(u8 PWM_Value)
 {
     u16 reg;
+
+    PWM_State = PWM_Value;
     
     switch(PWM_State){
         case CLOSE_FOUR_PWM:
@@ -142,7 +101,6 @@ INTERRUPT_HANDLER(TIM1_UPD_OVF_TRG_BRK_IRQHandler, 11)
         case CLOSE_TWO_PWM:
           TIM1->CCMR2 &= 0x00; 
           TIM1->CCMR2 |= 5<<4;
-         // TIM1->CCER1 |= 1<<5; 
           break;
         case OPEN_FOUR_PWM:
           TIM1->CCMR1 &= 0x00; 
@@ -156,6 +114,9 @@ INTERRUPT_HANDLER(TIM1_UPD_OVF_TRG_BRK_IRQHandler, 11)
         case SET_FREQUENCY:
             reg = 16000000/frequency;
             reg -= 1;
+            TIM1->CNTRH = 0;
+            TIM1->CNTRL = 0;
+
             TIM1->ARRH = (u8)(reg >> 8);
             TIM1->ARRL = (u8)(reg);
             reg >>= 1;
@@ -165,7 +126,4 @@ INTERRUPT_HANDLER(TIM1_UPD_OVF_TRG_BRK_IRQHandler, 11)
             TIM1->CCR2L = (u8)(reg);
             break;
     }
-
-    TIM1->IER &= 0xFE;
-    TIM1->SR1 &= 0xFE;
 }

@@ -10,9 +10,6 @@
 #define SET_FREQUENCY                   0x05
 
 void pwm_init(void);
-void PWM_Close(void);
-void PWM_Return(void);
-void Set_PWM_Fre(u32 fre);
-void PWM_CH2_Close(void);
+void PWM_Handler(u8);
 
 #endif
