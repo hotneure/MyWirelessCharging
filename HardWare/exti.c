@@ -42,13 +42,12 @@ void TIM4_Reset()
 //停止本次接收，所有状态变量复位
 void Stop_Rec()
 {
-   // u8 clear;
-    
-    //for(clear=0;clear<bufferLength;clear++){
-  //     Qi_Packet.Message[clear] = CLEAR_VALUE;
-  //  }
+    u8 clear;
+    for(clear=0;clear<bufferLength;clear++){
+        Qi_Packet.Message[clear]=0;
+    }
+
     TIM4_Reset();
-  //TIM4_Cmd(DISABLE);
     bufferIndex=0;
     Byte_State=STARTCHECK;
     bufferLength=0;
@@ -80,19 +79,38 @@ u8 decode_header(u8 header)
             return 3;
             break;
         case CONTROL_ERROR_PACKET:
-            Qi_Packet.Header =CONTROL_ERROR_PACKET;
+            if(Timer_Counter < ERROR_PACKET_TIME_OUT){
+                Qi_Packet.Header =CONTROL_ERROR_PACKET;
+                Timer_Counter=0;
+            }else{
+                Return_Ping();
+            }
             return 3;
             break;
         case RECEIVED_P0WER_PACKET:
-            Qi_Packet.Header = RECEIVED_P0WER_PACKET;
+          if( Rec_Timer_Counter <REC_PACKET_TIME_OUT){
+              Qi_Packet.Header = RECEIVED_P0WER_PACKET;
+          }else{
+              Return_Ping();
+          }  
             return 3;
             break;
         case CONFIG_PACKET:
-            Qi_Packet.Header = CONFIG_PACKET;
+          if(Timer_Counter < FIRST_PACKET_TIMEOUT){
+              Qi_Packet.Header = CONFIG_PACKET;  
+              Timer_Counter=0;
+          }else{
+              Return_Ping();            
+          }
             return 7;
             break;
         case ID_PACKET:
-            Qi_Packet.Header = ID_PACKET;
+          if(Timer_Counter < FIRST_PACKET_TIMEOUT){
+              Qi_Packet.Header = ID_PACKET;      
+              Timer_Counter=0;
+          }else{
+              Return_Ping();            
+          }
             return 9;
             break;
         default:
@@ -103,7 +121,6 @@ u8 decode_header(u8 header)
 
 void Save_Bit(u8 bit)
 {
- u8 a =80 ;
 
   if(!start_record && (pre_bit>=10)&&(pre_bit<=25)&& first_start_bit==1){    //如果接收了11到25个1，且收到起始位0
     start_record =1;
@@ -112,9 +129,6 @@ void Save_Bit(u8 bit)
   if(start_record){
       switch(Byte_State){
           case STARTCHECK:              //刚开始接收，校验起始位
-        GPIOB->ODR &= ~(1<<5);
-      while(a--);
-       GPIOB->ODR |= 1<<5;
               
               if(bit!=0){		//如果不是起始位，停止接收
                   Stop_Rec();
@@ -174,6 +188,7 @@ void Save_Bit(u8 bit)
                         }  
                         
                        if(Qi_Packet.CheckSum== Qi_Packet.Message[bufferLength-1]){
+
                            Qi_Packet.Flag =1;
                        }
                        

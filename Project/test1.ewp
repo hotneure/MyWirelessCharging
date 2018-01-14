@@ -1626,9 +1626,6 @@
       <name>$EW_DIR$\Test1\Library\src\stm8s_gpio.c</name>
     </file>
     <file>
-      <name>$EW_DIR$\Test1\Library\src\stm8s_tim2.c</name>
-    </file>
-    <file>
       <name>$EW_DIR$\Test1\Library\src\stm8s_tim4.c</name>
     </file>
   </group>

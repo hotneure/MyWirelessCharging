@@ -94,7 +94,7 @@ void PWM_Handler(u8 PWM_Value)
     
     switch(PWM_State){
         case CLOSE_FOUR_PWM:
-          
+
           TIM1->CCMR1 &= 0x00; 
           TIM1->CCMR1 |= 5<<4;
           TIM1->CCER1 |= 0x0A;

@@ -18,23 +18,31 @@ void delay(void)
     }
 }
 
+void GPIO_Config(void)
+{
+  GPIOB->CR1|=1<<5;
+  GPIOB->DDR|=1<<5;
+
+  GPIOA->CR1|=1<<2;
+  GPIOA->DDR|=1<<2;  
+
+  GPIOB->CR1|=1<<4;
+}
+
 
 void main(void)
 {
   WPCQi_Phase = Ping_Phase;
-  //disableInterrupts();
   CLK_Configuration();
+  GPIO_Config();
   TIM2_Init();
-  //ADC_Config();
+  ADC_Config();
   pwm_init();
-
-  GPIOB->CR1|=1<<5;
-  GPIOB->DDR|=1<<5;
-  
+//  GPIOA->ODR|=1<<2;          //电源检测
   exti_init();                //外部中断实验，使用的引脚与PWM冲突
   TIM4_Init();
   enableInterrupts();
-  //Set_PWM_Fre(155330);
+
   while(1)
   {
    WPC_QI();

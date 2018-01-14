@@ -18,5 +18,6 @@
 void exti_init(void);
 void TIM4_Init(void);
 void Save_Bit(unsigned char);
+void Stop_Rec(void);
 
 #endif

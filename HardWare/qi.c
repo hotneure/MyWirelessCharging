@@ -13,7 +13,11 @@ uint32_t frequency;
 QI_POWER_TRANSFER_PHASE_TYPEDEF      WPCQi_Phase;
 QI_DATA_PACKET_TYPEDEF               Qi_Packet;
 volatile u8 PWM_State;
-
+volatile u8 Breath_Led;
+volatile u8 Start_Count;
+volatile u8 Rec_Start_Count;
+volatile u16 Timer_Counter;
+volatile u32 Rec_Timer_Counter;
 
 void GPIO_UART(u16 data)
 {
@@ -56,71 +60,108 @@ void Voltage_Check()
     
 }
 
+void Return_Ping()
+{
+    Breath_Led=0;
+    GPIOB->DDR &= ~(1<<4);
+    Start_Count=0;
+    Rec_Start_Count=0;
+    Timer_Counter=0;
+    Qi_Packet.Flag =0;
+    Rec_Timer_Counter=0;
+    WPCQi_Phase = Ping_Phase;
+    Stop_Rec();
+}
+
 void Ping()
 {
-  // u16 Ping_Time_Out=0;
    
-   TIM2->ARRH =(u8)(PING_TIME_OUT>>8);
-   TIM2->ARRL|=(u8)PING_TIME_OUT;
-   
-   while(!(TIM2->SR1 & 0x01)){
-       if(Qi_Packet.Flag){
-           break;
-       }
-   }
-   TIM2_Clr();
-   if(Qi_Packet.Flag && Qi_Packet.Header == 0x01){
+    while(Timer_Counter < PING_TIME_OUT){
+        if(Qi_Packet.Flag && Qi_Packet.Header == 0x01) break;
+    }
+    if(Qi_Packet.Flag && Qi_Packet.Header == 0x01){
+        Stop_Rec();
         WPCQi_Phase = Identify_Config_Phase;            //开呼吸灯，进入配置阶段
+        Breath_Led =1;
         Qi_Packet.Flag =0; 
-   }else{
-     
-       TIM2->ARRH =(u8)(PING_TIME>>8);
-       TIM2->ARRL|=(u8)PING_TIME;
-   
-       while(!(TIM2->SR1 & 0x01)){};                                               //延时到100ms，重新ping
-       TIM2_Clr();
+        Timer_Counter=0;
+    }else{
+
+       while(Timer_Counter < PING_TIME){};                                               //延时到100ms，重新ping
        PWM_Handler(CLOSE_FOUR_PWM);
-       
-       TIM2->ARRH =(u8)(PING_DELAY>>8);
-       TIM2->ARRL|=(u8)PING_DELAY;
-       
-       while(!(TIM2->SR1 & 0x01)){
-           //T2_State = TIM2->SR1;
-       }
-       TIM2_Clr();
+       while(Timer_Counter < PING_DELAY){};
+       Timer_Counter=0;
    }
+   
+   
 }
 
 
 
 void ID_Config()
 {
-    
+    static u8 Last_Packet=0;
+        
+    while(Timer_Counter < PACKET_MAX){
+        if(Qi_Packet.Flag && Qi_Packet.Header==0x71){
+            Last_Packet = 0x71;
+            Timer_Counter=0;
+            return;
+         }
+        if(Qi_Packet.Flag && Qi_Packet.Header==0x51 && Last_Packet == 0x71){
+             WPCQi_Phase = Power_Transfer_Phase;
+             Timer_Counter=0;
+             Rec_Start_Count=1;
+             return;
+        }
+    }
+    Return_Ping();  
 }
 
 
 void Power_Transfer()
 {
-    
+    while(Timer_Counter < ERROR_PACKET_TIME_OUT && Rec_Timer_Counter <REC_PACKET_TIME_OUT){
+      if(Qi_Packet.Flag){
+          switch(Qi_Packet.Header){
+              case CONTROL_ERROR_PACKET:
+                 // PID(Qi_Packet.Message[1]);
+                  break;     
+              case RECEIVED_P0WER_PACKET:
+                  Rec_Timer_Counter=0;
+                  break;
+              case SAMSUNG_FAST_CHARGE:
+                  break;
+              case END_POWER_PACKET:
+                  break;
+          }
+          Qi_Packet.Flag=0;
+          return;
+      }
+    }
+    Return_Ping();
 }
-
+//int a= 30000;
 
 void WPC_QI()
 {
     switch(WPCQi_Phase)
     {
         case Ping_Phase:
-             PWM_Handler(OPEN_FOUR_PWM);                              //开始ping，开始65ms定时，判断是否接收到信号强度包，
-             Voltage_State = Get_ADC_Average(3);
-             GPIO_UART(Voltage_State);
-             TIM2->CR1|=0x01;                            //没有接收到则跳出（延时20），有接收到阶段设为配置阶段 
+             PWM_Handler(OPEN_FOUR_PWM);   
+             Start_Count=1;
+             //while(a--);
+             //Voltage_State = Get_ADC_Average(3);
+            // GPIO_UART(Voltage_State);
+             TIM2->CR1|=0x01;                            
              Ping();
              break;
              
         case Identify_Config_Phase:                          
-          //
+            ID_Config();
             break;
         case Power_Transfer_Phase:
+            Power_Transfer();
             break;
     }
 }
