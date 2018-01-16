@@ -79,38 +79,19 @@ u8 decode_header(u8 header)
             return 3;
             break;
         case CONTROL_ERROR_PACKET:
-            if(Timer_Counter < ERROR_PACKET_TIME_OUT){
                 Qi_Packet.Header =CONTROL_ERROR_PACKET;
-                Timer_Counter=0;
-            }else{
-                Return_Ping();
-            }
             return 3;
             break;
         case RECEIVED_P0WER_PACKET:
-          if( Rec_Timer_Counter <REC_PACKET_TIME_OUT){
               Qi_Packet.Header = RECEIVED_P0WER_PACKET;
-          }else{
-              Return_Ping();
-          }  
             return 3;
             break;
         case CONFIG_PACKET:
-          if(Timer_Counter < FIRST_PACKET_TIMEOUT){
               Qi_Packet.Header = CONFIG_PACKET;  
-              Timer_Counter=0;
-          }else{
-              Return_Ping();            
-          }
             return 7;
             break;
         case ID_PACKET:
-          if(Timer_Counter < FIRST_PACKET_TIMEOUT){
               Qi_Packet.Header = ID_PACKET;      
-              Timer_Counter=0;
-          }else{
-              Return_Ping();            
-          }
             return 9;
             break;
         default:

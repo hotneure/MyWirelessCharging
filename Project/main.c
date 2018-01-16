@@ -27,6 +27,7 @@ void GPIO_Config(void)
   GPIOA->DDR|=1<<2;  
 
   GPIOB->CR1|=1<<4;
+  GPIOA->ODR|=1<<2;
 }
 
 
@@ -34,11 +35,10 @@ void main(void)
 {
   WPCQi_Phase = Ping_Phase;
   CLK_Configuration();
-  GPIO_Config();
   TIM2_Init();
   ADC_Config();
   pwm_init();
-//  GPIOA->ODR|=1<<2;          //电源检测
+  GPIO_Config();
   exti_init();                //外部中断实验，使用的引脚与PWM冲突
   TIM4_Init();
   enableInterrupts();

@@ -2,7 +2,7 @@
 #include "stm8s.h"
 #include "qi.h"
 
-uint8_t DeadTime = 4;
+uint8_t DeadTime = 3;
 
 void TIM1_DeInit(void)
 {
@@ -68,16 +68,16 @@ void pwm_init(void)
  
     TIM1_DeInit();
     
-    TIM1->ARRH = (uint8_t)(0x5C >> 8);
-    TIM1->ARRL = (uint8_t)(0x5C);
+    TIM1->ARRH = (uint8_t)(0x50 >> 8);
+    TIM1->ARRL = (uint8_t)(0x50);
     TIM1->CCER1 |= (uint8_t)0x05;
     TIM1->CCMR1 = (uint8_t)((uint8_t)(TIM1->CCMR1 & (uint8_t)(~0x70))| (uint8_t)0x60);
-    TIM1->CCR1H = (uint8_t)(0x2E >> 8);
-    TIM1->CCR1L = (uint8_t)(0x2E);
+    TIM1->CCR1H = (uint8_t)(0x28 >> 8);
+    TIM1->CCR1L = (uint8_t)(0x28);
     TIM1->CCER1 |= (uint8_t)(0x50);
     TIM1->CCMR2 = (uint8_t)((uint8_t)(TIM1->CCMR2 & (uint8_t)(~0x70)) |(uint8_t)0x60);
-    TIM1->CCR2H = (uint8_t)(0x2E >> 8);
-    TIM1->CCR2L = (uint8_t)(0x2E);
+    TIM1->CCR2H = (uint8_t)(0x28 >> 8);
+    TIM1->CCR2L = (uint8_t)(0x28);
     TIM1->DTR = (uint8_t)(DeadTime);
   //  TIM1->BKR  =  (uint8_t)(0x05);
     TIM1->CR1 |=0x01;
