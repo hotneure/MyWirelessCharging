@@ -1618,18 +1618,6 @@
     </file>
   </group>
   <group>
-    <name>Library</name>
-    <file>
-      <name>$EW_DIR$\Test1\Library\src\stm8s_exti.c</name>
-    </file>
-    <file>
-      <name>$EW_DIR$\Test1\Library\src\stm8s_gpio.c</name>
-    </file>
-    <file>
-      <name>$EW_DIR$\Test1\Library\src\stm8s_tim4.c</name>
-    </file>
-  </group>
-  <group>
     <name>UserApp</name>
     <file>
       <name>$PROJ_DIR$\main.c</name>

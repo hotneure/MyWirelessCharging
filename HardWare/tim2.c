@@ -60,6 +60,13 @@ void TIM2_Init()
     static u8 LED_State =0;
     static u8 expire=0;
     
+    if(Start_Count){            //所有超时计数
+        Timer_Counter++;
+        if(Rec_Start_Count) Rec_Timer_Counter++;
+    }
+    
+    if(Timer_Start) Timer++;    //通信计数
+
     if(Breath_Led){
         Counter++;
         if(LED_State==0 && Counter==1550){
@@ -97,10 +104,6 @@ void TIM2_Init()
             if(Counter==duty)  GPIOB->DDR &=~(1<<4);
         }       
     }
-
-    if(Start_Count){
-        Timer_Counter++;
-        if(Rec_Start_Count) Rec_Timer_Counter++;
-    }
+    
     TIM2->SR1 &= ~(0x01);
  }

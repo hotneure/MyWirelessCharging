@@ -16,49 +16,53 @@ volatile u8 Rec_Start_Count;
 volatile u16 Voltage_State;
 volatile u16 Timer_Counter;
 volatile u32 Rec_Timer_Counter;
+volatile u8 Samsung_Fast;
+volatile u16 Timer;
+volatile u8 Timer_Start;
+volatile u32 Base_Fre;
+volatile u8 Samsung;
 
 void GPIO_UART(u16 data)
 {
     u8 bit=0;
     long delay;
     GPIOB->ODR &=~1<<5;
-    for(delay=20;delay>0;delay--){
-        
-    }
+    for(delay=20;delay>0;delay--){}
     GPIOB->ODR |= 1<<5;
-    for(delay=5;delay>0;delay--){
-        
-    }
+    for(delay=5;delay>0;delay--){}
     for(bit=0;bit<8;bit++){
       if((data>>bit) & 0x01){
          GPIOB->ODR &=~1<<5;
-         for(delay=3;delay>0;delay--){
-        
-         }
+         for(delay=3;delay>0;delay--){}
          GPIOB->ODR |= 1<<5;
-         for(delay=5;delay>0;delay--){
-        
-         }      
+         for(delay=5;delay>0;delay--){}      
       }else{
          GPIOB->ODR &=~1<<5;
-         for(delay=10;delay>0;delay--){
-        
-         }
+         for(delay=10;delay>0;delay--){}
          GPIOB->ODR |= 1<<5;
-         for(delay=5;delay>0;delay--){
-        
-         }
+         for(delay=5;delay>0;delay--){}
       }
     }
+}
+
+void delayms(u16 ms)
+{ 
+    
+    ms *=100;
+    ms /=32;
+    Timer_Start =1;
+    Timer =0;
+    while(Timer<ms);
+    Timer_Start = 0;
+    
 }
 
 
 void Voltage_Check()
 {
-  
     Voltage_State = Get_ADC_Average(3);
    // GPIO_UART(Voltage_State);   //zhang
-    if(Voltage_State>20){
+    if(Voltage_State>100){
         Voltage_State = 1;
         PWM_Handler(CLOSE_TWO_PWM);
         frequency = HIGH_VOLTAGE_FRE;
@@ -83,11 +87,55 @@ void Return_Ping()
     Qi_Packet.Flag =0;
     Rec_Timer_Counter=0;
     WPCQi_Phase = Ping_Phase;
+    Samsung_Fast =0;
+    Samsung=0;
     Stop_Rec();
+}
+
+
+void Convert_fre()
+{
+
+    if(Base_Fre == frequency/*GPIOB->IDR & 0X20*/){
+        frequency -=5000;
+      //GPIOB->ODR &= ~(1<<5);
+    }else{
+        frequency = Base_Fre;
+      //GPIOB->ODR |= 1<<5;
+    }
+    PWM_Handler(SET_FREQUENCY);      
+}
+
+void Send_Data(u32 data,u8 data_length)
+{
+    u8 bit =0;
+    
+    Timer_Start =1;
+    while(Timer<19);
+    
+    bit = data &0x01;
+    while(data_length){
+          Convert_fre();
+          data_length--;    
+          if(bit){
+              Timer=0;
+              while(Timer<5);
+              Convert_fre();
+              Timer=0;
+              while(Timer<4);
+          }else{
+              Timer=0;
+              while(Timer<9);
+          }
+          data>>=1;
+          bit = data&0x01;    
+    }
+    Timer_Start =0;
 }
 
 void Ping()
 {
+    Timer_Counter =0;
     while(Timer_Counter < PING_TIME_OUT){
         if(Qi_Packet.Flag && Qi_Packet.Header == 0x01) break;
     }
@@ -112,9 +160,15 @@ void Ping()
 void ID_Config()
 {
     static u8 Last_Packet=0;
-    
+    Timer_Counter =0;
     while(Timer_Counter < PACKET_MAX){
         if(Qi_Packet.Flag && Qi_Packet.Header==0x71){
+            if(Qi_Packet.Message[1]==0x11 && Qi_Packet.Message[2]==0x00 && Qi_Packet.Message[3]==0x42){
+                if(Voltage_State){
+                    Samsung_Fast =1;        //三星启动快充标志
+                }
+                Samsung = 1;
+            }
             Last_Packet = 0x71;
             Timer_Counter=0;
             return;
@@ -129,7 +183,7 @@ void ID_Config()
     Return_Ping();  
 }
 
-
+u8 a=85;
 void Power_Transfer()
 {
     Timer_Counter=0;
@@ -137,12 +191,52 @@ void Power_Transfer()
       if(Qi_Packet.Flag){
           switch(Qi_Packet.Header){
               case CONTROL_ERROR_PACKET:
-                  PID(Qi_Packet.Message[1]);
+                    
+                  if(Samsung_Fast){             //启动快充
+                      Base_Fre = frequency;
+                      //while(1){
+                          Send_Data(0x180B02,21);
+                          Convert_fre();
+                          while(a--);
+                          a=85;
+                          Convert_fre();
+                          //if(Qi_Packet.Header==0x18) break;
+                          
+                          delayms(35);
+                          Convert_fre();
+                          delayms(5);
+                          Send_Data(0xC0580,20);
+                          
+                          delayms(150);
+                          Convert_fre();
+                          delayms(5);
+                          Send_Data(0x180B02,21);
+                          Convert_fre();
+                          while(a--);
+                          Convert_fre();
+                     // }
+                      Samsung_Fast = 0;
+                  }
+                  if(Samsung){
+                      PID(Qi_Packet.Message[1]);
+                  }else{
+                    if(Qi_Packet.Message[1]){
+                        if(Qi_Packet.Message[1] & 0x80){
+                            frequency += 4000;
+                            PWM_Handler(SET_FREQUENCY); 
+                        }else {
+                            frequency -= 4000;
+                            PWM_Handler(SET_FREQUENCY);
+                        }                        
+                    }
+
+                  }
                   break;     
               case RECEIVED_P0WER_PACKET:
                   Rec_Timer_Counter=0;
                   break;
               case SAMSUNG_FAST_CHARGE:
+                  a=1;
                   break;
               case SAMSUNG_CHARGE_STATE:
                   break;
@@ -153,7 +247,13 @@ void Power_Transfer()
           return;
       }
     }
-    Return_Ping();
+    if(Samsung){
+        Return_Ping();//三星正常停止
+    }else{
+      GPIO_UART(10);
+        //其他，包括线圈，待定
+    }
+
 }
 
 void WPC_QI()
@@ -162,10 +262,18 @@ void WPC_QI()
     {
         case Ping_Phase:
 
+             frequency = 220000;
+             PWM_Handler(SET_FREQUENCY);
+             
              PWM_Handler(OPEN_FOUR_PWM);    
-             if(Voltage_State) Voltage_Check();
+             if(Voltage_State) {
+                Voltage_Check();
+             }else{
+                frequency = LOW_VOLTAGE_FRE;
+                PWM_Handler(SET_FREQUENCY);
+             }
              Start_Count=1;
-             TIM2->CR1|=0x01;                            
+             TIM2->CR1|=0x01; 
              Ping();
              break;
              

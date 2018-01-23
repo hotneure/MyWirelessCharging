@@ -25,7 +25,8 @@ void GPIO_Config(void)
 {
   GPIOB->CR1|=1<<5;
   GPIOB->DDR|=1<<5;
-
+  GPIOB->ODR|=1<<5;
+  
   GPIOA->CR1|=1<<2;
   GPIOA->DDR|=1<<2;  
 
@@ -41,6 +42,7 @@ void GPIO_Config(void)
 
 void main(void)
 {
+
   WPCQi_Phase = Ping_Phase;
   Voltage_State =1;
   CLK_Configuration();
@@ -54,7 +56,7 @@ void main(void)
 
   while(1)
   {
-   WPC_QI();
+       WPC_QI();
   }
 }
 

@@ -30,8 +30,8 @@
 #define CONFIG_PACKET                     0x51
 #define ID_PACKET                         0x71
 
-#define HIGH_VOLTAGE_FRE                  156000
-#define LOW_VOLTAGE_FRE                   174000
+#define HIGH_VOLTAGE_FRE                  156860
+#define LOW_VOLTAGE_FRE                   142000//174000
 
 #define MINFREQUENCY                      125000
 #define MAXFREQUENCY                      200000
@@ -77,14 +77,15 @@ extern volatile u8 Rec_Start_Count;
 extern volatile u16 Voltage_State;
 extern volatile u16 Timer_Counter;
 extern volatile u32 Rec_Timer_Counter;
-
+extern volatile u16 Timer;
+extern volatile u8 Timer_Start;
 
 void WPC_QI(void);
 void Return_Ping(void);
 void Voltage_Check(void);
-
+void delayms(u16 ms);
 void GPIO_UART(u16);
-
+void Send_Data(u32 data,u8 data_length);
 #endif
 
 

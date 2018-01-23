@@ -18,18 +18,32 @@ volatile u8 pre_bit;
 volatile u8 first_start_bit;
 volatile u8 Level_State ;
 
+
+void EXTI_DeInit(void)
+{
+  EXTI->CR1 = 0x00;
+  EXTI->CR2 = 0x00;
+}
+
 void exti_init()
 {
     EXTI_DeInit();
-    GPIO_Init(GPIOD,   GPIO_PIN_5,   GPIO_MODE_IN_PU_IT);  
-    EXTI_SetExtIntSensitivity(EXTI_PORT_GPIOD, EXTI_SENSITIVITY_RISE_FALL);
-    EXTI_SetTLISensitivity(EXTI_TLISENSITIVITY_FALL_ONLY);
+    GPIOD->CR2 &= (uint8_t)(~(1<<5));
+    GPIOD->DDR &= (uint8_t)(~(1<<5));
+    GPIOD->CR1 |= (uint8_t)(1<<5);
+    GPIOD->CR2 |= (uint8_t)(1<<5);
+    EXTI->CR1 &= (uint8_t)(~0xC0);
+    EXTI->CR1 |= (uint8_t)((uint8_t)(0x03) << 6);
 }
 
 void TIM4_Init()
 {
-  TIM4_TimeBaseInit(TIM4_PRESCALER_64, 150);
-  TIM4_ClearFlag(TIM4_FLAG_UPDATE);
+  //TIM4_TimeBaseInit(TIM4_PRESCALER_64, 150);
+    TIM4->PSCR = (uint8_t)(0x06);
+    TIM4->ARR = (uint8_t)(0x96);
+  
+ // TIM4_ClearFlag(TIM4_FLAG_UPDATE);
+    TIM4->SR1 = (uint8_t)(~0x01);
 }
 
 //TIM4¸´Î»
@@ -169,7 +183,6 @@ void Save_Bit(u8 bit)
                         }  
                         
                        if(Qi_Packet.CheckSum== Qi_Packet.Message[bufferLength-1]){
-
                            Qi_Packet.Flag =1;
                        }
                        
@@ -183,7 +196,18 @@ void Save_Bit(u8 bit)
 
 }
 
-
+void TIM4_Cmd(FunctionalState NewState)
+{
+  
+  if (NewState != DISABLE)
+  {
+    TIM4->CR1 |= TIM4_CR1_CEN;
+  }
+  else
+  {
+    TIM4->CR1 &= (uint8_t)(~TIM4_CR1_CEN);
+  }
+}
 
 INTERRUPT_HANDLER(EXTI_PORTD_IRQHandler, 6)
 {
