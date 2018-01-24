@@ -25,11 +25,9 @@ void ADC_Config()
     GPIOD->DDR &= (uint8_t)(~0x04);
     GPIOD->CR1 &= (uint8_t)(~0x04);
     
-    /* De-Init ADC peripheral*/
     ADC1_DeInit();
     ADC1->CR2 &= (uint8_t)(~0x08);
     ADC1->CR2 |= (uint8_t)(0x00);
-    ADC1->CR1 |= 0x02;
     ADC1->CSR &= (uint8_t)(~0x0F);
     ADC1->CSR |= (uint8_t)(0x03);
     ADC1->CR1 &= (uint8_t)(~0x70);
@@ -47,6 +45,7 @@ u16 Get_ADC_Average(u8 times)
     u8 i;
     unsigned long sum=0;
     sum = Get_ADC_Data();
+    sum =0;
     for(i=0;i<times;i++)
     {
         sum += Get_ADC_Data();
@@ -58,13 +57,16 @@ u16 Get_ADC_Data()
 {
     unsigned int delay_times=2;
     unsigned int temp=0;
-    
+      
     ADC1->CR1 |= 0x01;
     while(delay_times--);
     ADC1->CR1 |= 0x01;
-    while(!(ADC1->CSR & 0x80)){};
-    ADC1->CSR &= (uint8_t)(~0x80);
+    while(!(ADC1->CSR & 0x80)){
+         
+    };
+    ADC1->CSR &= (uint8_t)(~0xC0);
     temp |= ADC1->DRH<<2;
     temp |= ADC1->DRL ; 
+    ADC1->CR1 &= ~0x01;
     return temp;
 }

@@ -53,7 +53,8 @@ void main(void)
   exti_init();                //外部中断实验，使用的引脚与PWM冲突
   TIM4_Init();
   enableInterrupts();
-
+  Voltage_Check();
+  
   while(1)
   {
        WPC_QI();

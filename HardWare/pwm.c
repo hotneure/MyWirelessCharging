@@ -79,7 +79,6 @@ void pwm_init(void)
     TIM1->CCR2H = (uint8_t)(0x28 >> 8);
     TIM1->CCR2L = (uint8_t)(0x28);
     TIM1->DTR = (uint8_t)(DeadTime);
-  //  TIM1->BKR  =  (uint8_t)(0x05);
     TIM1->CR1 |=0x01;
     TIM1->BKR |= 0x80;
     PWM_Handler(CLOSE_FOUR_PWM);
