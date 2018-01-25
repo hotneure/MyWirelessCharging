@@ -75,7 +75,6 @@ void PID_Circulation(float DeterCurr, float LastCirCurrent)
         if(frequency<(float)MINFREQUENCY) frequency =(float)MINFREQUENCY;
         if(frequency>(float)MAXFREQUENCY) frequency =(float)MAXFREQUENCY;
         
-        //frequency = (uint32_t)(((float)FREQUENCY_MAGNIFY) * Contr_Varia);
         PWM_Handler(SET_FREQUENCY);
 }
 

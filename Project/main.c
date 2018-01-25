@@ -52,9 +52,7 @@ void main(void)
   GPIO_Config();
   exti_init();                //外部中断实验，使用的引脚与PWM冲突
   TIM4_Init();
-  enableInterrupts();
-  Voltage_Check();
-  
+  enableInterrupts(); 
   while(1)
   {
        WPC_QI();

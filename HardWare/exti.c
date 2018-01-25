@@ -71,6 +71,7 @@ void Stop_Rec()
     Bytecheck = 0;
     first_start_bit=0;
     Qi_Packet.CheckSum =0;
+    Qi_Packet.Flag=0;
 }
 
 
