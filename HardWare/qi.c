@@ -60,34 +60,33 @@ void delayms(u16 ms)
 
 void Voltage_Check()
 {
-    u8 check_value =0;
 
-    if(Voltage_State==2){
-        check_value=25;
-        check_time=1;
-    }else{
-        check_time=3;
-        check_value=90;
-    }
     frequency = 220000;
     PWM_Handler(SET_FREQUENCY); 
     PWM_Handler(OPEN_FOUR_PWM);
-    Voltage_State = Get_ADC_Average(check_time);
-   // Voltage_State=110;//zxy
-    if(Voltage_State>check_value){
-        Voltage_State = 1;
-        PWM_Handler(CLOSE_TWO_PWM);
+    Voltage_State = Get_ADC_Average(3);
+    //GPIO_UART(Voltage_State);
+    if(Voltage_State>=100 /*&& Voltage_State<=150)||(Voltage_State>=185 && Voltage_State<=140)||Voltage_State>=433*/){
         frequency = HIGH_VOLTAGE_FRE;
         PWM_Handler(SET_FREQUENCY);
+        Voltage_State = 1;
+        PWM_Handler(CLOSE_TWO_PWM);
     }else{
+        frequency = LOW_VOLTAGE_FRE;
+        PWM_Handler(SET_FREQUENCY); 
+        Voltage_State = 0;
+        GPIOA->ODR &=~(1<<2);      
+    }
+    /*
+    if(Voltage_State<105 ||(Voltage_State>140 && Voltage_State<185)||(Voltage_State>315 && Voltage_State<433)){
+        frequency = LOW_VOLTAGE_FRE;
+        PWM_Handler(SET_FREQUENCY); 
         Voltage_State = 0;
         GPIOA->ODR &=~(1<<2);
-        frequency = LOW_VOLTAGE_FRE;
-        PWM_Handler(SET_FREQUENCY);
-    }
+    }*/
     
 }
-
+//返回ping阶段，重新初始化
 void Return_Ping()
 {
 
@@ -106,21 +105,18 @@ void Return_Ping()
     Start_Count=0;
 }
 
-
+//转换频率
 void Convert_fre()
 {
-
-    if(Base_Fre == frequency/*GPIOB->IDR & 0X20*/){
+    if(Base_Fre == frequency){
         frequency -=4000;
-         //GPIOB->ODR &= ~(1<<5);
     }else{
         frequency = Base_Fre;
-      //GPIOB->ODR |= 1<<5;
     }
     PWM_Handler(SET_FREQUENCY);      
 }
 
-
+//发送调制信息
 void Send_Data(u32 data,u8 data_length)
 {
     u8 bit =0;
@@ -146,7 +142,7 @@ void Send_Data(u32 data,u8 data_length)
     Timer_Start =0;
 }
 
-
+//启动快充请求
 void Fast_Charge_Request()
 {
         u8 delayus=80;
@@ -163,7 +159,7 @@ void Fast_Charge_Request()
         Convert_fre();
 }
 
-
+//ping阶段
 void Ping()
 {
     Timer_Counter =0;
@@ -175,7 +171,7 @@ void Ping()
         WPCQi_Phase = Identify_Config_Phase;            //开呼吸灯，进入配置阶段
         Breath_Led =1;
     }else{
-       while(Timer_Counter < PING_TIME){};                                               //延时到100ms，重新ping
+       while(Timer_Counter < PING_TIME){};              //延时到100ms，重新ping
        PWM_Handler(CLOSE_FOUR_PWM);
        Timer_Counter=0;
        while(Timer_Counter < PING_DELAY){};
@@ -184,7 +180,7 @@ void Ping()
 }
 
 
-
+//配置阶段
 void ID_Config()
 {
     static u8 Last_Packet=0;
@@ -217,7 +213,7 @@ void ID_Config()
     Return_Ping();  
 }
 
-
+//传输阶段
 void Power_Transfer()
 {
     static u8 time_out=0;
@@ -316,17 +312,24 @@ void Power_Transfer()
           if(Voltage_State){
               frequency =156800;
           }else{
-              frequency =165000;
+              frequency =160000;
           }
             PWM_Handler(SET_FREQUENCY);
         }
-        Timeout_Voltage=Get_ADC_Average(6);
-        //GPIO_UART(Timeout_Voltage);
+        Timeout_Voltage=Get_ADC_Average(10);
+        GPIO_UART(Timeout_Voltage);//zxy
         if(time_out>2){
             time_out=0;
-            if(Timeout_Voltage <30){
+            if(Timeout_Voltage <35){
                 Return_Ping();
-            }  
+            }else{
+                if(Voltage_State){
+                    frequency =142000;
+                }else{
+                    frequency =135000;
+                }
+                PWM_Handler(SET_FREQUENCY);
+            }
         }
     }
 
@@ -338,6 +341,7 @@ void WPC_QI()
     {
         case Ping_Phase:
              if(Voltage_State){
+                 //Voltage_State--;
                  Voltage_Check();
              }else{
                  frequency = LOW_VOLTAGE_FRE;
