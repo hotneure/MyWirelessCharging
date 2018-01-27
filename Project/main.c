@@ -44,7 +44,7 @@ void main(void)
 {
 
   WPCQi_Phase = Ping_Phase;
-  Voltage_State =1;
+  Voltage_State =2;
   CLK_Configuration();
   TIM2_Init();
   ADC_Config();

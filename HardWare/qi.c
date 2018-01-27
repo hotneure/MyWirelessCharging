@@ -19,7 +19,8 @@ volatile u8 Samsung_Fast;
 volatile u16 Timer;
 volatile u8 Timer_Start;
 volatile u32 Base_Fre;
-volatile u8 Samsung;
+volatile u8 Samsung_State;
+volatile u8 check_time;
 
 void GPIO_UART(u16 data)
 {
@@ -59,12 +60,21 @@ void delayms(u16 ms)
 
 void Voltage_Check()
 {
+    u8 check_value =0;
+
+    if(Voltage_State==2){
+        check_value=25;
+        check_time=1;
+    }else{
+        check_time=3;
+        check_value=90;
+    }
     frequency = 220000;
     PWM_Handler(SET_FREQUENCY); 
     PWM_Handler(OPEN_FOUR_PWM);
-    Voltage_State = Get_ADC_Average(3);
+    Voltage_State = Get_ADC_Average(check_time);
    // Voltage_State=110;//zxy
-    if(Voltage_State>20){
+    if(Voltage_State>check_value){
         Voltage_State = 1;
         PWM_Handler(CLOSE_TWO_PWM);
         frequency = HIGH_VOLTAGE_FRE;
@@ -89,7 +99,7 @@ void Return_Ping()
     Rec_Timer_Counter=0;
     WPCQi_Phase = Ping_Phase;
     Samsung_Fast =0;
-    Samsung=0;
+    Samsung_State=NOT_SAMSUNG;
     Stop_Rec();
     PWM_Handler(CLOSE_FOUR_PWM);
     while(Timer_Counter<1562);
@@ -101,7 +111,7 @@ void Convert_fre()
 {
 
     if(Base_Fre == frequency/*GPIOB->IDR & 0X20*/){
-        frequency -=5000;
+        frequency -=4000;
          //GPIOB->ODR &= ~(1<<5);
     }else{
         frequency = Base_Fre;
@@ -125,10 +135,10 @@ void Send_Data(u32 data,u8 data_length)
               while(Timer<5);
               Convert_fre();
               Timer=0;
-              while(Timer<4);
+              while(Timer<5);
           }else{
               Timer=0;Timer=0;
-              while(Timer<9);
+              while(Timer<10);
           }
           data>>=1;
           bit = data&0x01;    
@@ -139,12 +149,18 @@ void Send_Data(u32 data,u8 data_length)
 
 void Fast_Charge_Request()
 {
+        u8 delayus=80;
+  
+        delayms(4);
         Base_Fre = HIGH_VOLTAGE_FRE;
         frequency = Base_Fre;
         PWM_Handler(SET_FREQUENCY); 
-        delayms(5);
+        delayms(2);
         Send_Data(0x180B02,21);
         if(Qi_Packet.Flag) Qi_Packet.Flag=0;
+        Convert_fre();
+        while(delayus--){};
+        Convert_fre();
 }
 
 
@@ -165,8 +181,6 @@ void Ping()
        while(Timer_Counter < PING_DELAY){};
        Timer_Counter=0;
    }
-   
-   
 }
 
 
@@ -179,10 +193,13 @@ void ID_Config()
         if(Qi_Packet.Flag && Qi_Packet.Header==0x71){
             if(Qi_Packet.Message[1]==0x11 && Qi_Packet.Message[2]==0x00 && Qi_Packet.Message[3]==0x42){
                 if(Voltage_State){
-                    Samsung_Fast =1;        //三星启动快充标志
+                    Samsung_State =SAMSUNG_FAST_CHARGING;        //三星启动快充标志
+                }else{
+                    Samsung_State =SAMSUNG_LOW_POWER;
                 }
-                Samsung = 1;
-            }
+            }else{
+                Samsung_State = NOT_SAMSUNG;
+            }  
             Last_Packet = 0x71;
             Timer_Counter=0;
             Stop_Rec();
@@ -207,9 +224,9 @@ void Power_Transfer()
     u16 Timeout_Voltage=0;
     
     while(Timer_Counter < ERROR_PACKET_TIME_OUT && Rec_Timer_Counter <REC_PACKET_TIME_OUT){
-      if(Timer > 8125 && time_out <3){                         //如果在2.6s内，超时的次数不超过3次   拿开手机时，一定会连续超时，如果在2.6s时间内超时次数不到3次，则手机还在
-          time_out=0;
+      if(Timer > 9375 && time_out <3){                         //如果在2.6s内，超时的次数不超过3次   拿开手机时，一定会连续超时，如果在2.6s时间内超时次数不到3次，则手机还在
           Timer=0;
+          time_out=0;
           Timer_Start=0;
       }
       if(Qi_Packet.Flag){
@@ -217,36 +234,68 @@ void Power_Transfer()
           Rec_Timer_Counter=0;
           switch(Qi_Packet.Header){
               case CONTROL_ERROR_PACKET:
-                  if(Samsung_Fast){
-                      Fast_Charge_Request();
-                      return;
-                  }
-                  
-                  if(Samsung){
-                      PID(Qi_Packet.Message[1]);
-                  }else{
-                      if(Qi_Packet.Message[1]){
-                          if(Qi_Packet.Message[1] & 0x80){
-                              frequency += 3000;
+                  switch(Samsung_State){
+                      case NOT_SAMSUNG:                               //不是三星设备
+                          if(Qi_Packet.Message[1]){
+                              if(Qi_Packet.Message[1] & 0x80){
+                                  frequency += 3000;
+                              }else {
+                                  frequency -= 3000;   
+                              }                        
+                          }
+                          if(frequency<MINFREQUENCY) frequency =MINFREQUENCY;
+                          if(frequency>MAXFREQUENCY) frequency =MAXFREQUENCY;
+                          PWM_Handler(SET_FREQUENCY);
+                          break;
+                      case SAMSUNG_LOW_POWER:                          //三星5V
+                          PID(Qi_Packet.Message[1]);
+                          break;
+                      case SAMSUNG_FAST_CHARGING:                       //启动快充
+                          Fast_Charge_Request();
+                          break;
+                      case SAMSUNG_REC_START_CHARGING:                 //收到0x18
+                          if(Qi_Packet.Message[1]==0x37){
+                              if(frequency>130000){
+                                  frequency -= 4000;
+                              }else{
+                                  frequency -= 2000;
+                              }
                               PWM_Handler(SET_FREQUENCY); 
-                          }else {
-                              frequency -= 3000;
-                              PWM_Handler(SET_FREQUENCY);
-                          }                        
-                      }
-                  }
-                  
+                          }
+                          break;
+                      case SAMSUNG_REC_CHECK_CHARGING:                //收到0x28
+                          
+                          break;
+                      case SAMSUNG_FOUR_PWM:                         //快充开四路，状态
+                          PID(Qi_Packet.Message[1]);
+                          break;
+                  }          
                   break;     
-              case RECEIVED_P0WER_PACKET:
+              case RECEIVED_P0WER_PACKET:                                       //0x04
                   Rec_Timer_Counter=0;
                   break;
               case SAMSUNG_FAST_CHARGE:
-                  Samsung_Fast = 0;
+                  Samsung_State=SAMSUNG_REC_START_CHARGING;                     //0x18
+                  Rec_Timer_Counter=0;
                   break;
-              case SAMSUNG_CHARGE_STATE:
+              case SAMSUNG_CHECK:                                               //0x28
+                  if(Qi_Packet.Message[1]==0x0C && Qi_Packet.Message[2]==0x00){
+                      Samsung_State=SAMSUNG_REC_CHECK_CHARGING;
+                  }
                   break;
-              case END_POWER_PACKET:
+              case END_POWER_PACKET:                                            //0x02
+                  
                   break;
+          }
+          
+          if(Samsung_State){                                                    //快充开四路，动作
+              while(Rec_Timer_Counter > OPEN_FOUR_PWM_TIME){
+                  Samsung_State=SAMSUNG_FOUR_PWM;
+                  frequency = HIGH_VOLTAGE_FRE;
+                  PWM_Handler(SET_FREQUENCY);
+                  delayms(1);
+                  PWM_Handler(OPEN_FOUR_PWM);
+              }
           }
           Stop_Rec();
           return;
@@ -255,7 +304,7 @@ void Power_Transfer()
     Stop_Rec();
     Timer_Counter=0;
     Rec_Timer_Counter=0;
-    if(Samsung){
+    if(Samsung_State){
         Return_Ping();//三星正常停止
       }else{
         time_out++;
@@ -267,16 +316,15 @@ void Power_Transfer()
           if(Voltage_State){
               frequency =156800;
           }else{
-              frequency =170000;
+              frequency =165000;
           }
-            
             PWM_Handler(SET_FREQUENCY);
         }
         Timeout_Voltage=Get_ADC_Average(6);
-        GPIO_UART(Timeout_Voltage);
+        //GPIO_UART(Timeout_Voltage);
         if(time_out>2){
             time_out=0;
-            if(Timeout_Voltage <20){
+            if(Timeout_Voltage <30){
                 Return_Ping();
             }  
         }

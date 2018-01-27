@@ -11,6 +11,7 @@
 #define ERROR_PACKET_TIME_OUT       3906                //控制错误包超时时间，1250ms
 #define REC_PACKET_TIME_OUT         93750               //整流包超时时间，30s
 #define PACKET_MAX                  531
+#define OPEN_FOUR_PWM_TIME          31250               //10s计时
 
 //Power Transmitter timing in the identification & configuration phase
 #define NEXT_TIME          21
@@ -26,19 +27,28 @@
 #define CONTROL_ERROR_PACKET              0x03
 #define RECEIVED_P0WER_PACKET             0x04
 #define SAMSUNG_FAST_CHARGE               0x18
-#define SAMSUNG_CHARGE_STATE              0x28
+#define SAMSUNG_CHECK                     0x28
 #define CONFIG_PACKET                     0x51
 #define ID_PACKET                         0x71
 
 #define HIGH_VOLTAGE_FRE                  156860
-#define LOW_VOLTAGE_FRE                   142000//174000
+#define LOW_VOLTAGE_FRE                   174000
 
-#define MINFREQUENCY                      125000
+#define MINFREQUENCY                      120000
 #define MAXFREQUENCY                      200000
 #define FREQUENCY_MAGNIFY                 1000
 
 //Voltage check
 #define LARGE_POWER                       0x30
+
+//SAMSUNG
+#define NOT_SAMSUNG                       0x00
+#define SAMSUNG_LOW_POWER                 0x01
+#define SAMSUNG_FAST_CHARGING             0x02
+#define SAMSUNG_REC_START_CHARGING        0x03
+#define SAMSUNG_REC_CHECK_CHARGING        0x04
+#define SAMSUNG_FOUR_PWM                  0x05
+
 
 typedef enum
 {

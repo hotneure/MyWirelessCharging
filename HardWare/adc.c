@@ -44,8 +44,8 @@ u16 Get_ADC_Average(u8 times)
 {
     u8 i;
     unsigned long sum=0;
-    sum = Get_ADC_Data();
-    sum =0;
+    //sum = Get_ADC_Data();
+    //sum =0;
     for(i=0;i<times;i++)
     {
         sum += Get_ADC_Data();

@@ -101,6 +101,14 @@ u8 decode_header(u8 header)
               Qi_Packet.Header = RECEIVED_P0WER_PACKET;
             return 3;
             break;
+        case SAMSUNG_FAST_CHARGE:
+            Qi_Packet.Header = SAMSUNG_FAST_CHARGE;
+            return 3;
+            break;
+        case SAMSUNG_CHECK:
+            Qi_Packet.Header = SAMSUNG_FAST_CHARGE;
+            return 4;
+            break;      
         case CONFIG_PACKET:
               Qi_Packet.Header = CONFIG_PACKET;  
             return 7;
@@ -185,6 +193,7 @@ void Save_Bit(u8 bit)
                         
                        if(Qi_Packet.CheckSum== Qi_Packet.Message[bufferLength-1]){
                            Qi_Packet.Flag =1;
+                           //GPIO_UART(Qi_Packet.Message[0]);
                        }
                        
                     }
@@ -240,7 +249,6 @@ INTERRUPT_HANDLER(EXTI_PORTD_IRQHandler, 6)
                 if(time>100){                            //大于400us，保存一个0
                     first_start_bit++; 
                     Save_Bit(0);
-                    
                     TIM4_Reset();
                     Times_State = TIME2;
                 }else{

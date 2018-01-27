@@ -11,16 +11,19 @@ const float  M1=3.0E+3;
 const float Mpid=2.0E+4;
 const float Ki= 0.05;
 float integral=0;
+volatile u8 error_value_sign;
 
 void PID(signed char error_value)
 {
 	char i;
-	float Last_Cir_Curr=0 ,Act_Curr=0,Deter_Curr=0;
+	float Last_Cir_Curr=0 ,Act_Curr=0,Deter_Curr=0;//Coefficient;
         
         Act_Curr =(float)Get_ADC_Average(10);					        //读取的实际电流值
         if(error_value & 0x80){
+            error_value_sign=0;
             Deter_Curr = Act_Curr*(1-(float)(~(error_value-1))/128);
         }else{
+            error_value_sign=1;
             Deter_Curr = Act_Curr*(1+(float)error_value/128);
         }
         
@@ -49,7 +52,14 @@ void PID_Circulation(float DeterCurr, float LastCirCurrent)
             Sv = 5.0;
         }
 	deviation =DeterCurr - LastCirCurrent;
-
+        if(deviation<0 && error_value_sign){
+            deviation = 10;
+        }
+        
+        if(deviation>0 && error_value_sign){
+            deviation = -10;
+        }
+           
 	proportion = Kp*deviation;
 	integral += Ki*deviation*tim_inner;
 
@@ -72,8 +82,8 @@ void PID_Circulation(float DeterCurr, float LastCirCurrent)
         
 	frequency -= (uint32_t)(Sv * PID_Sum);
         
-        if(frequency<(float)MINFREQUENCY) frequency =(float)MINFREQUENCY;
-        if(frequency>(float)MAXFREQUENCY) frequency =(float)MAXFREQUENCY;
+        if(frequency<MINFREQUENCY) frequency =MINFREQUENCY;
+        if(frequency>MAXFREQUENCY) frequency =MAXFREQUENCY;
         
         PWM_Handler(SET_FREQUENCY);
 }
